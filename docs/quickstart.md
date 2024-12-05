@@ -2,15 +2,15 @@
 
 The scripts from this quickstart guide set up a local environment consisting of
 two Trino servers and a PostgreSQL database running in Docker, and a Trino
-Gateway server running in the host operating system. 
+Gateway server running in the host operating system.
 
 ## Start Trino Gateway server
 
-The following script starts a Trino Gateway server using the 
+The following script starts a Trino Gateway server using the
 [Quickstart configuration](quickstart-config.yaml) at http://localhost:8080.
 It also starts a dockerized PostgreSQL database at localhost:5432.
 
-To start the server, copy the script below to a temporary directory 
+To start the server, copy the script below to a temporary directory
 under the project root folder, and run it at the temporary directory.
 
 It  copies the following, necessary files to current directory:
@@ -23,7 +23,7 @@ It  copies the following, necessary files to current directory:
 #!/usr/bin/env sh
 
 # Set the version for the Gateway Jar
-VERSION=12
+VERSION=13
 
 # Function to copy necessary files to the current directory
 copy_files() {
@@ -94,7 +94,7 @@ kill -5 $(jps | grep gateway-ha.jar | cut -d' ' -f1)
 
 ## Add Trino backends
 
-This following script starts two dockerized Trino servers at 
+This following script starts two dockerized Trino servers at
 http://localhost:8081 and http://localhost:8082. It then adds them as backends
 to the Trino Gateway server started by the preceding script.
 
