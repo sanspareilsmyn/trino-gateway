@@ -22,65 +22,39 @@ It  copies the following, necessary files to current directory:
 ```shell
 #!/usr/bin/env sh
 
-# Set the version for the Gateway Jar
 VERSION=13
+BASE_URL="https://repo1.maven.org/maven2/io/trino/gateway/gateway-ha"
 
-# Function to copy necessary files to the current directory
+# Copy necessary files
 copy_files() {
-    # Check and get the Gateway Jar
-    if [[ -f "gateway-ha.jar" ]]; then
-        echo "Found gateway-ha.jar file in current directory."
-    else
-        echo "Fetching gateway-ha.jar version $VERSION from Maven Central repository."
-        curl -O "https://repo1.maven.org/maven2/io/trino/gateway/gateway-ha/${VERSION}/gateway-ha-${VERSION}-jar-with-dependencies.jar"
-        mv "gateway-ha-${VERSION}-jar-with-dependencies.jar" ./gateway-ha.jar
+    if [[ ! -f "gateway-ha.jar" ]]; then
+        echo "Fetching gateway-ha.jar version $VERSION"
+        curl -O "$BASE_URL/$VERSION/gateway-ha-$VERSION-jar-with-dependencies.jar"
+        mv "gateway-ha-$VERSION-jar-with-dependencies.jar" gateway-ha.jar
     fi
 
-    # Check and get the Config.yaml
-    if [[ -f "quickstart-config.yaml" ]]; then
-        echo "Found quickstart-config.yaml file in current directory."
-    else
-        cp ../docs/quickstart-config.yaml ./quickstart-config.yaml
-    fi
-
-    # Check and get the postgres.sql
-    if [[ -f "gateway-ha-persistence-postgres.sql" ]]; then
-        echo "Found gateway-ha-persistence-postgres.sql file in current directory."
-    else
-        cp ../gateway-ha/src/main/resources/gateway-ha-persistence-postgres.sql ./gateway-ha-persistence-postgres.sql
-    fi
+    [[ ! -f "quickstart-config.yaml" ]] && cp ../docs/quickstart-config.yaml .
+    [[ ! -f "gateway-ha-persistence-postgres.sql" ]] && cp ../gateway-ha/src/main/resources/gateway-ha-persistence-postgres.sql .
 }
 
-# Function to check if PostgreSQL database is running and start it if not
+# Start PostgreSQL database if not running
 start_postgres_db() {
-    if docker ps --format '{{.Names}}' | grep -q '^local-postgres$'; then
-        echo "PostgreSQL database container 'local-postgres' is already running. Only starting Trino Gateway."
-    else
-        echo "Starting PostgreSQL database container 'local-postgres'."
-        
-        # Set the password for PostgreSQL
-        export PGPASSWORD=mysecretpassword
-        
-        # Run PostgreSQL container with necessary configurations
+    if ! docker ps --format '{{.Names}}' | grep -q '^local-postgres$'; then
+        echo "Starting PostgreSQL database container"
+        PGPASSWORD=mysecretpassword
         docker run -v "$(pwd)"/gateway-ha-persistence-postgres.sql:/tmp/gateway-ha-persistence-postgres.sql \
-            --name local-postgres -p 5432:5432 \
-            -e POSTGRES_PASSWORD=$PGPASSWORD -d postgres:latest
-        
-        # Wait for the database to initialize
+            --name local-postgres -p 5432:5432 -e POSTGRES_PASSWORD=$PGPASSWORD -d postgres:latest
         sleep 5
-
-        # Initialize the database and load the SQL script
         docker exec local-postgres psql -U postgres -h localhost -c 'CREATE DATABASE gateway'
-        docker exec local-postgres psql -U postgres -h localhost -d gateway \
-            -f /tmp/gateway-ha-persistence-postgres.sql
+        docker exec local-postgres psql -U postgres -h localhost -d gateway -f /tmp/gateway-ha-persistence-postgres.sql
     fi
 }
 
 # Main execution flow
-copy_files          # Copy necessary files to current directory
-start_postgres_db   # Start PostgreSQL database if not running
+copy_files
+start_postgres_db
 
-# Start Trino Gateway server.
+# Start Trino Gateway server
 echo "Starting Trino Gateway server..."
 java -Xmx1g -jar ./gateway-ha.jar ./quickstart-config.yaml
 ```
