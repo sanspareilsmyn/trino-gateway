@@ -79,31 +79,30 @@ to the Trino Gateway server started by the preceding script.
 ```shell
 #!/usr/bin/env sh
 
-# Start a pair of Trino servers on different ports
-docker run --name trino1 -d -p 8081:8080 \
-    -e JAVA_TOOL_OPTIONS="-Dhttp-server.process-forwarded=true" trinodb/trino
+TRINO_IMAGE="trinodb/trino"
+JAVA_OPTS="-Dhttp-server.process-forwarded=true"
 
-docker run --name trino2 -d -p 8082:8080 \
-    -e JAVA_TOOL_OPTIONS="-Dhttp-server.process-forwarded=true" trinodb/trino
+# Start Trino servers
+for i in 1 2; do
+    docker run --name trino$i -d -p 808$i:8080 \
+        -e JAVA_TOOL_OPTIONS="$JAVA_OPTS" $TRINO_IMAGE
+done
 
-# Add the Trino servers as Gateway backends
+# Add Trino servers as Gateway backends
 add_backend() {
-    local name=$1
-    local proxy_to=$2
-
     curl -H "Content-Type: application/json" -X POST \
         localhost:8080/gateway/backend/modify/add \
         -d "{
-              \"name\": \"$name\",
-              \"proxyTo\": \"$proxy_to\",
+              \"name\": \"$1\",
+              \"proxyTo\": \"http://localhost:808$2\",
               \"active\": true,
               \"routingGroup\": \"adhoc\"
             }"
 }
 
-# Adding Trino servers as backends
-add_backend "trino1" "http://localhost:8081"
-add_backend "trino2" "http://localhost:8082"                                                                                       }'
+for i in 1 2; do
+    add_backend "trino$i" "$i"
+done                                                                                   }'
 ```
 
 You can clean up by running
